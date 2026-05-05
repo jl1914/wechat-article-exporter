@@ -20,6 +20,20 @@ export interface Preferences {
 
   syncDateRange: '24h' | '1d' | '3d' | '7d' | '1m' | '3m' | '6m' | '1y' | 'all' | 'point';
   syncDatePoint: number;
+
+  // 自动同步配置
+  autoSync: AutoSyncConfig;
+}
+
+interface AutoSyncConfig {
+  // 是否启用自动同步
+  enabled: boolean;
+
+  // 同步间隔（分钟）
+  intervalMinutes: number;
+
+  // 是否自动下载新文章
+  autoDownload: boolean;
 }
 
 interface ExportConfig {

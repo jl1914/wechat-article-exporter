@@ -23,6 +23,12 @@ LicenseManager.setLicenseKey(runtimeConfig.public.aggridLicense);
 if (!isChromeBrowser()) {
   alert('为了更好的用户体验，推荐使用 Chrome 浏览器。');
 }
+
+// 初始化自动同步（仅在客户端）
+if (process.client) {
+  const autoSync = useAutoSync();
+  autoSync.start();
+}
 </script>
 
 <style>

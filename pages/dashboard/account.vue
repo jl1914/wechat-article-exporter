@@ -15,6 +15,7 @@ import { formatTimeStamp } from '#shared/utils/helpers';
 import { getArticleList } from '~/apis';
 import GlobalSearchAccountDialog from '~/components/global/SearchAccountDialog.vue';
 import GridAccountActions from '~/components/grid/AccountActions.vue';
+import GridAccountMonitor from '~/components/grid/AccountMonitor.vue';
 import GridLoadProgress from '~/components/grid/LoadProgress.vue';
 import ConfirmModal from '~/components/modal/Confirm.vue';
 import LoginModal from '~/components/modal/Login.vue';
@@ -24,6 +25,7 @@ import { IMAGE_PROXY, websiteName } from '~/config';
 import { sharedGridOptions } from '~/config/shared-grid-options';
 import { deleteAccountData } from '~/store/v2';
 import { getArticleCache, hitCache } from '~/store/v2/article';
+import { getMonitoredAccountIds, isMonitored, setAllMonitored } from '~/store/v2/autoSync';
 import { getAllInfo, getInfoCache, importMpAccounts, type MpAccount } from '~/store/v2/info';
 import type { AccountManifest } from '~/types/account';
 import type { Preferences } from '~/types/preferences';
@@ -300,6 +302,16 @@ const columnDefs = ref<ColDef[]>([
     minWidth: 200,
   },
   {
+    colId: 'monitored',
+    headerName: '监控',
+    sortable: false,
+    filter: false,
+    cellRenderer: GridAccountMonitor,
+    cellClass: 'flex justify-center items-center',
+    headerClass: 'justify-center',
+    minWidth: 100,
+  },
+  {
     colId: 'action',
     headerName: '操作',
     field: 'fakeid',
@@ -484,6 +496,26 @@ function exportAccount() {
 }
 
 const { getActualDateRange } = useSyncDeadline();
+
+function monitorSelectedAccounts() {
+  const rows = getSelectedRows();
+  setAllMonitored(
+    rows.map(r => r.fakeid),
+    true
+  );
+  gridApi.value?.refreshCells({ force: true });
+  toast.success('监控设置', `已监控 ${rows.length} 个公众号`);
+}
+
+function unmonitorSelectedAccounts() {
+  const rows = getSelectedRows();
+  setAllMonitored(
+    rows.map(r => r.fakeid),
+    false
+  );
+  gridApi.value?.refreshCells({ force: true });
+  toast.success('监控设置', `已取消监控 ${rows.length} 个公众号`);
+}
 </script>
 
 <template>
@@ -529,7 +561,22 @@ const { getActualDateRange } = useSyncDeadline();
           @click="loadSelectedAccountArticle"
           >同步</UButton
         >
-        <div class="hidden xl:flex flex-1 justify-end">
+        <UButton
+          color="emerald"
+          icon="i-lucide:bell"
+          :disabled="!hasSelectedRows"
+          @click="monitorSelectedAccounts"
+          >监控</UButton
+        >
+        <UButton
+          color="orange"
+          icon="i-lucide:bell-off"
+          :disabled="!hasSelectedRows"
+          @click="unmonitorSelectedAccounts"
+          >取消监控</UButton
+        >
+        <div class="hidden xl:flex flex-1 justify-end items-center gap-3">
+          <AutoSyncIndicator />
           <span class="self-end text-sm text-blue-500 font-medium">同步范围: {{ getActualDateRange() }}</span>
         </div>
       </header>

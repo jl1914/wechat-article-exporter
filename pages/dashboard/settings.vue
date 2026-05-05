@@ -10,6 +10,7 @@
         <SettingExport />
         <SettingMisc />
       </div>
+      <SettingAutoSync />
       <!--      <div>-->
       <!--        <SettingDisplay />-->
       <!--      </div>-->

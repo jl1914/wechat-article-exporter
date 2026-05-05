@@ -136,6 +136,7 @@ onUnmounted(() => {
     <div v-else>
       <UButton color="gray" variant="solid" @click="login">登录公众号</UButton>
     </div>
+    <AutoSyncIndicator />
     <StorageUsage />
   </footer>
 </template>
