@@ -34,6 +34,9 @@ interface AutoSyncConfig {
 
   // 是否自动下载新文章
   autoDownload: boolean;
+
+  // 自动导出的格式列表
+  exportFormats: string[];
 }
 
 interface ExportConfig {

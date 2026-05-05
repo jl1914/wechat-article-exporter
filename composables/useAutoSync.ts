@@ -6,14 +6,16 @@ import type { MpAccount } from '~/store/v2/info';
 import type { Preferences } from '~/types/preferences';
 import type { AppMsgEx } from '~/types/types';
 import { Downloader } from '~/utils/download/Downloader';
+import { Exporter } from '~/utils/download/Exporter';
 
-type SyncStatus = 'idle' | 'syncing' | 'downloading' | 'error';
+type SyncStatus = 'idle' | 'syncing' | 'downloading' | 'exporting' | 'error';
 
 const isRunning = ref(false);
 const lastSyncTime = ref<number | null>(null);
 const syncStatus = ref<SyncStatus>('idle');
 const lastError = ref<string | null>(null);
 const newArticleCount = ref(0);
+const exportDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
 
 export default () => {
   const toast = toastFactory();
@@ -79,6 +81,25 @@ export default () => {
     syncCycle();
   }
 
+  async function pickExportDirectory() {
+    try {
+      // @ts-ignore
+      const handle = await window.showDirectoryPicker({
+        mode: 'readwrite',
+        startIn: 'downloads',
+      });
+      exportDirectoryHandle.value = handle;
+      toast.success('导出文件夹', '已成功选择导出文件夹');
+      return handle;
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        return null;
+      }
+      toast.error('导出文件夹', `选择文件夹失败: ${e.message}`);
+      return null;
+    }
+  }
+
   async function syncCycle() {
     if (isRunning.value) return;
     if (!loginAccount.value) {
@@ -128,9 +149,17 @@ export default () => {
       if (newArticleUrls.length > 0) {
         toast.success('自动同步', `检测到 ${newArticleUrls.length} 篇新文章`);
 
-        if ((preferences.value as unknown as Preferences).autoSync?.autoDownload) {
+        const autoSyncConfig = (preferences.value as unknown as Preferences).autoSync;
+
+        if (autoSyncConfig?.autoDownload) {
           syncStatus.value = 'downloading';
           await autoDownload(newArticleUrls);
+        }
+
+        const formats = autoSyncConfig?.exportFormats ?? [];
+        if (formats.length > 0 && exportDirectoryHandle.value) {
+          syncStatus.value = 'exporting';
+          await autoExport(newArticleUrls, formats);
         }
       }
 
@@ -158,15 +187,31 @@ export default () => {
     }
   }
 
+  async function autoExport(urls: string[], formats: string[]) {
+    for (const format of formats) {
+      try {
+        const exporter = new Exporter(urls);
+        exporter.setExportDirectoryHandle(exportDirectoryHandle.value);
+        await exporter.startExport(format as any);
+        toast.success('自动导出', `已自动导出 ${format.toUpperCase()} 格式`);
+      } catch (e: any) {
+        console.error(`自动导出 ${format} 失败:`, e);
+        toast.error('自动导出', `${format.toUpperCase()} 导出失败: ${e.message}`);
+      }
+    }
+  }
+
   return {
     isRunning: readonly(isRunning),
     lastSyncTime: readonly(lastSyncTime),
     syncStatus: readonly(syncStatus),
     lastError: readonly(lastError),
     newArticleCount: readonly(newArticleCount),
+    exportDirectoryHandle: readonly(exportDirectoryHandle),
     isActive,
     start,
     stop,
     syncNow,
+    pickExportDirectory,
   };
 };

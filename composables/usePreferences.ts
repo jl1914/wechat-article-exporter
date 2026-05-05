@@ -26,6 +26,7 @@ const defaultOptions: Partial<Preferences> = {
     enabled: false,
     intervalMinutes: 30,
     autoDownload: false,
+    exportFormats: [],
   },
 };
 
