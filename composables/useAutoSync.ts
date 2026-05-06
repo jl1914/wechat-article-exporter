@@ -130,6 +130,7 @@ export default () => {
 
   const { pause, resume, isActive } = useIntervalFn(
     () => {
+      console.log('[autoSync interval] timer fired, calling syncCycle()');
       syncCycle();
     },
     intervalMs,
@@ -139,6 +140,7 @@ export default () => {
   watch(
     () => (preferences.value as unknown as Preferences).autoSync?.enabled,
     enabled => {
+      console.log('[autoSync watch enabled] enabled=', enabled);
       if (enabled) {
         start();
       } else {
@@ -165,11 +167,20 @@ export default () => {
   });
 
   function start() {
-    if (!loginAccount.value) return;
-    if (isActive.value) return;
+    console.log('[autoSync.start] called, loginAccount=', !!loginAccount.value, 'isActive=', isActive.value);
+    if (!loginAccount.value) {
+      console.log('[autoSync.start] aborted: no loginAccount');
+      return;
+    }
+    if (isActive.value) {
+      console.log('[autoSync.start] aborted: already active');
+      return;
+    }
+    console.log('[autoSync.start] calling resume(), intervalMs=', intervalMs.value);
     resume();
     syncStatus.value = 'idle';
     lastError.value = null;
+    console.log('[autoSync.start] resume() called, isActive now=', isActive.value);
   }
 
   function stop() {
@@ -209,8 +220,13 @@ export default () => {
   }
 
   async function syncCycle() {
-    if (isRunning.value) return;
+    console.log('[syncCycle] called, isRunning=', isRunning.value);
+    if (isRunning.value) {
+      console.log('[syncCycle] skipped: already running');
+      return;
+    }
     if (!loginAccount.value) {
+      console.log('[syncCycle] stopping: no loginAccount');
       stop();
       return;
     }
@@ -222,9 +238,11 @@ export default () => {
 
     try {
       const accounts = await getMonitoredAccounts();
+      console.log('[syncCycle] monitored accounts count=', accounts.length);
       if (accounts.length === 0) {
         isRunning.value = false;
         syncStatus.value = 'idle';
+        console.log('[syncCycle] no monitored accounts, returning');
         return;
       }
 
@@ -278,8 +296,9 @@ export default () => {
       lastSyncTime.value = Date.now();
       setLastSyncTime(lastSyncTime.value);
       syncStatus.value = 'idle';
+      console.log('[syncCycle] completed successfully, lastSyncTime=', new Date(lastSyncTime.value).toISOString());
     } catch (e: any) {
-      console.error('自动同步周期失败:', e);
+      console.error('[syncCycle] failed:', e);
       syncStatus.value = 'error';
       lastError.value = e.message;
     } finally {
