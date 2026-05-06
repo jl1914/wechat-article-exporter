@@ -100,9 +100,10 @@
           :disabled="!autoSyncEnabled"
           @click="autoSync.pickExportDirectory()"
         >
-          {{ hasDirectoryHandle ? '已选择文件夹' : '选择导出文件夹' }}
+          {{ directoryButtonText }}
         </UButton>
         <span v-if="hasDirectoryHandle" class="text-sm text-green-600">已配置</span>
+        <span v-else-if="hadExportDir" class="text-sm text-amber-600">上次已选择，刷新后需重新选择</span>
         <span v-else class="text-sm text-gray-400">未配置（自动导出将不会执行）</span>
       </div>
 
@@ -173,6 +174,13 @@ const newArticleCount = computed(() => autoSync.newArticleCount.value);
 const syncStatus = computed(() => autoSync.syncStatus.value);
 const isSyncRunning = computed(() => autoSync.isRunning.value);
 const hasDirectoryHandle = computed(() => !!autoSync.exportDirectoryHandle.value);
+const hadExportDir = computed(() => autoSync.hadExportDir.value);
+
+const directoryButtonText = computed(() => {
+  if (hasDirectoryHandle.value) return '已选择文件夹';
+  if (hadExportDir.value) return '重新选择文件夹';
+  return '选择导出文件夹';
+});
 
 const exportFormatOptions = [
   { label: 'HTML', value: 'html' },

@@ -79,12 +79,12 @@ const logoutBtnLoading = ref(false);
 
 async function logout() {
   logoutBtnLoading.value = true;
-  const { statusCode, statusText } = await request<LogoutResponse>('/api/web/mp/logout');
-  if (statusCode === 200) {
-    loginAccount.value = null;
-  } else {
-    alert(statusText);
+  try {
+    await request<LogoutResponse>('/api/web/mp/logout');
+  } catch (e) {
+    console.error('退出登录请求失败:', e);
   }
+  loginAccount.value = null;
   logoutBtnLoading.value = false;
 }
 

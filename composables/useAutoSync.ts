@@ -11,11 +11,39 @@ import { Exporter } from '~/utils/download/Exporter';
 type SyncStatus = 'idle' | 'syncing' | 'downloading' | 'exporting' | 'error';
 
 const isRunning = ref(false);
-const lastSyncTime = ref<number | null>(null);
 const syncStatus = ref<SyncStatus>('idle');
 const lastError = ref<string | null>(null);
 const newArticleCount = ref(0);
 const exportDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
+
+// 持久化到 localStorage 的运行时状态
+const LAST_SYNC_TIME_KEY = 'auto-sync-last-time';
+const EXPORT_DIR_FLAG_KEY = 'auto-sync-export-dir-ready';
+
+function getLastSyncTime(): number | null {
+  const raw = localStorage.getItem(LAST_SYNC_TIME_KEY);
+  return raw ? Number(raw) : null;
+}
+
+function setLastSyncTime(timestamp: number | null) {
+  if (timestamp) {
+    localStorage.setItem(LAST_SYNC_TIME_KEY, String(timestamp));
+  } else {
+    localStorage.removeItem(LAST_SYNC_TIME_KEY);
+  }
+}
+
+function getExportDirFlag(): boolean {
+  return localStorage.getItem(EXPORT_DIR_FLAG_KEY) === '1';
+}
+
+function setExportDirFlag(flag: boolean) {
+  if (flag) {
+    localStorage.setItem(EXPORT_DIR_FLAG_KEY, '1');
+  } else {
+    localStorage.removeItem(EXPORT_DIR_FLAG_KEY);
+  }
+}
 
 export default () => {
   const toast = toastFactory();
@@ -24,6 +52,9 @@ export default () => {
   const visibility = useDocumentVisibility();
 
   let downloader: Downloader | null = null;
+
+  const lastSyncTime = ref<number | null>(getLastSyncTime());
+  const hadExportDir = ref<boolean>(getExportDirFlag());
 
   const intervalMs = computed(() => {
     const minutes = (preferences.value as unknown as Preferences).autoSync?.intervalMinutes ?? 30;
@@ -89,6 +120,8 @@ export default () => {
         startIn: 'downloads',
       });
       exportDirectoryHandle.value = handle;
+      setExportDirFlag(true);
+      hadExportDir.value = true;
       toast.success('导出文件夹', '已成功选择导出文件夹');
       return handle;
     } catch (e: any) {
@@ -157,13 +190,18 @@ export default () => {
         }
 
         const formats = autoSyncConfig?.exportFormats ?? [];
-        if (formats.length > 0 && exportDirectoryHandle.value) {
-          syncStatus.value = 'exporting';
-          await autoExport(newArticleUrls, formats);
+        if (formats.length > 0) {
+          if (exportDirectoryHandle.value) {
+            syncStatus.value = 'exporting';
+            await autoExport(newArticleUrls, formats);
+          } else if (hadExportDir.value) {
+            toast.warning('自动导出', '导出文件夹授权已过期，请重新选择');
+          }
         }
       }
 
       lastSyncTime.value = Date.now();
+      setLastSyncTime(lastSyncTime.value);
       syncStatus.value = 'idle';
     } catch (e: any) {
       console.error('自动同步周期失败:', e);
@@ -208,6 +246,7 @@ export default () => {
     lastError: readonly(lastError),
     newArticleCount: readonly(newArticleCount),
     exportDirectoryHandle: readonly(exportDirectoryHandle),
+    hadExportDir: readonly(hadExportDir),
     isActive,
     start,
     stop,
