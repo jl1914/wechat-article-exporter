@@ -45,6 +45,63 @@ function setExportDirFlag(flag: boolean) {
   }
 }
 
+// IndexedDB 持久化 FileSystemDirectoryHandle
+const EXPORT_DIR_DB_NAME = 'auto-sync-export-dir';
+const EXPORT_DIR_DB_VERSION = 1;
+
+function openExportDirDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(EXPORT_DIR_DB_NAME, EXPORT_DIR_DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => resolve(req.result);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('handle')) {
+        db.createObjectStore('handle');
+      }
+    };
+  });
+}
+
+async function saveExportDirHandle(handle: FileSystemDirectoryHandle): Promise<void> {
+  const db = await openExportDirDB();
+  const tx = db.transaction('handle', 'readwrite');
+  const store = tx.objectStore('handle');
+  await new Promise<void>((resolve, reject) => {
+    const req = store.put(handle, 'dir');
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+}
+
+async function loadExportDirHandle(): Promise<FileSystemDirectoryHandle | null> {
+  try {
+    const db = await openExportDirDB();
+    const tx = db.transaction('handle', 'readonly');
+    const store = tx.objectStore('handle');
+    const handle = await new Promise<FileSystemDirectoryHandle | undefined>((resolve, reject) => {
+      const req = store.get('dir');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return handle || null;
+  } catch {
+    return null;
+  }
+}
+
+async function verifyExportDirHandle(handle: FileSystemDirectoryHandle): Promise<boolean> {
+  try {
+    // @ts-ignore
+    const status = await handle.queryPermission({ mode: 'readwrite' });
+    return status === 'granted';
+  } catch {
+    return false;
+  }
+}
+
 export default () => {
   const toast = toastFactory();
   const loginAccount = useLoginAccount();
@@ -55,6 +112,16 @@ export default () => {
 
   const lastSyncTime = ref<number | null>(getLastSyncTime());
   const hadExportDir = ref<boolean>(getExportDirFlag());
+
+  // 页面加载时尝试从 IndexedDB 恢复导出文件夹 handle
+  onMounted(async () => {
+    if (getExportDirFlag()) {
+      const handle = await loadExportDirHandle();
+      if (handle && (await verifyExportDirHandle(handle))) {
+        exportDirectoryHandle.value = handle;
+      }
+    }
+  });
 
   const intervalMs = computed(() => {
     const minutes = (preferences.value as unknown as Preferences).autoSync?.intervalMinutes ?? 30;
@@ -122,6 +189,7 @@ export default () => {
       exportDirectoryHandle.value = handle;
       setExportDirFlag(true);
       hadExportDir.value = true;
+      await saveExportDirHandle(handle);
       toast.success('导出文件夹', '已成功选择导出文件夹');
       return handle;
     } catch (e: any) {
