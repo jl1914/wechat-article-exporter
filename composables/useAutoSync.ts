@@ -157,6 +157,13 @@ export default () => {
     }
   });
 
+  // 登录状态恢复后，如果自动同步已启用则启动
+  watch(loginAccount, account => {
+    if (account && (preferences.value as unknown as Preferences).autoSync?.enabled) {
+      start();
+    }
+  });
+
   function start() {
     if (!loginAccount.value) return;
     if (isActive.value) return;
