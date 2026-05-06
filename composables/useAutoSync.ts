@@ -159,7 +159,7 @@ export default () => {
 
   function start() {
     if (!loginAccount.value) return;
-    if (isActive) return;
+    if (isActive.value) return;
     resume();
     syncStatus.value = 'idle';
     lastError.value = null;
