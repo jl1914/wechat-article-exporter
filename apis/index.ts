@@ -45,23 +45,26 @@ export async function getArticleList(
     // 返回的文章数量为0就表示已加载完毕
     const isCompleted = publish_list.length === 0;
 
+    const articles = publish_list.flatMap(item => {
+      const publish_info: PublishInfo = JSON.parse(item.publish_info);
+      return publish_info.appmsgex;
+    });
+
     // 更新缓存，注意带有关键字搜索的结果不能写入缓存
     if (!keyword) {
       try {
         await updateArticleCache(account, publish_page);
 
         if (begin === 0) {
-          await updateLastUpdateTime(account.fakeid);
+          const maxCreateTime =
+            articles.length > 0 ? Math.max(...articles.map(a => a.create_time).filter(t => typeof t === 'number')) : 0;
+          await updateLastUpdateTime(account.fakeid, maxCreateTime > 0 ? maxCreateTime : undefined);
         }
       } catch (e) {
         console.error('写入文章缓存失败:', e);
       }
     }
 
-    const articles = publish_list.flatMap(item => {
-      const publish_info: PublishInfo = JSON.parse(item.publish_info);
-      return publish_info.appmsgex;
-    });
     return [articles, isCompleted, publish_page.total_count];
   } else if (resp.base_resp.ret === 200003) {
     loginAccount.value = null;

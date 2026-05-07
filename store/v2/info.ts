@@ -55,11 +55,11 @@ export async function updateInfoCache(mpAccount: MpAccount): Promise<boolean> {
   });
 }
 
-export async function updateLastUpdateTime(fakeid: string): Promise<boolean> {
+export async function updateLastUpdateTime(fakeid: string, timestamp?: number): Promise<boolean> {
   return db.transaction('rw', 'info', async () => {
     let infoCache = await db.info.get(fakeid);
     if (infoCache) {
-      infoCache.last_update_time = Math.round(Date.now() / 1000);
+      infoCache.last_update_time = timestamp ?? Math.round(Date.now() / 1000);
       db.info.put(infoCache);
     }
     return true;
