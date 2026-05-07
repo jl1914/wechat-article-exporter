@@ -15,6 +15,8 @@ const syncStatus = ref<SyncStatus>('idle');
 const lastError = ref<string | null>(null);
 const newArticleCount = ref(0);
 const exportDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
+const lastSyncTime = ref<number | null>(getLastSyncTime());
+const hadExportDir = ref<boolean>(getExportDirFlag());
 
 // 持久化到 localStorage 的运行时状态
 const LAST_SYNC_TIME_KEY = 'auto-sync-last-time';
@@ -110,9 +112,6 @@ export default () => {
 
   let downloader: Downloader | null = null;
 
-  const lastSyncTime = ref<number | null>(getLastSyncTime());
-  const hadExportDir = ref<boolean>(getExportDirFlag());
-
   // 页面加载时尝试从 IndexedDB 恢复导出文件夹 handle
   onMounted(async () => {
     if (getExportDirFlag()) {
@@ -130,7 +129,6 @@ export default () => {
 
   const { pause, resume, isActive } = useIntervalFn(
     () => {
-      console.log('[autoSync interval] timer fired, calling syncCycle()');
       syncCycle();
     },
     intervalMs,
@@ -140,7 +138,6 @@ export default () => {
   watch(
     () => (preferences.value as unknown as Preferences).autoSync?.enabled,
     enabled => {
-      console.log('[autoSync watch enabled] enabled=', enabled);
       if (enabled) {
         start();
       } else {
@@ -167,20 +164,11 @@ export default () => {
   });
 
   function start() {
-    console.log('[autoSync.start] called, loginAccount=', !!loginAccount.value, 'isActive=', isActive.value);
-    if (!loginAccount.value) {
-      console.log('[autoSync.start] aborted: no loginAccount');
-      return;
-    }
-    if (isActive.value) {
-      console.log('[autoSync.start] aborted: already active');
-      return;
-    }
-    console.log('[autoSync.start] calling resume(), intervalMs=', intervalMs.value);
+    if (!loginAccount.value) return;
+    if (isActive.value) return;
     resume();
     syncStatus.value = 'idle';
     lastError.value = null;
-    console.log('[autoSync.start] resume() called, isActive now=', isActive.value);
   }
 
   function stop() {
@@ -220,13 +208,8 @@ export default () => {
   }
 
   async function syncCycle() {
-    console.log('[syncCycle] called, isRunning=', isRunning.value);
-    if (isRunning.value) {
-      console.log('[syncCycle] skipped: already running');
-      return;
-    }
+    if (isRunning.value) return;
     if (!loginAccount.value) {
-      console.log('[syncCycle] stopping: no loginAccount');
       stop();
       return;
     }
@@ -238,11 +221,9 @@ export default () => {
 
     try {
       const accounts = await getMonitoredAccounts();
-      console.log('[syncCycle] monitored accounts count=', accounts.length);
       if (accounts.length === 0) {
         isRunning.value = false;
         syncStatus.value = 'idle';
-        console.log('[syncCycle] no monitored accounts, returning');
         return;
       }
 
@@ -296,9 +277,8 @@ export default () => {
       lastSyncTime.value = Date.now();
       setLastSyncTime(lastSyncTime.value);
       syncStatus.value = 'idle';
-      console.log('[syncCycle] completed successfully, lastSyncTime=', new Date(lastSyncTime.value).toISOString());
     } catch (e: any) {
-      console.error('[syncCycle] failed:', e);
+      console.error('自动同步周期失败:', e);
       syncStatus.value = 'error';
       lastError.value = e.message;
     } finally {

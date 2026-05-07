@@ -27,9 +27,7 @@ if (!isChromeBrowser()) {
 // 初始化自动同步（仅在客户端）
 if (process.client) {
   const autoSync = useAutoSync();
-  console.log('[app.vue] calling autoSync.start(), loginAccount=', useLoginAccount().value);
   autoSync.start();
-  console.log('[app.vue] autoSync.start() returned');
 }
 </script>
 
