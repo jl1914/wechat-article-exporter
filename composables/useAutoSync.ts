@@ -10,14 +10,6 @@ import { Exporter } from '~/utils/download/Exporter';
 
 type SyncStatus = 'idle' | 'syncing' | 'downloading' | 'exporting' | 'error';
 
-const isRunning = ref(false);
-const syncStatus = ref<SyncStatus>('idle');
-const lastError = ref<string | null>(null);
-const newArticleCount = ref(0);
-const exportDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
-const lastSyncTime = ref<number | null>(getLastSyncTime());
-const hadExportDir = ref<boolean>(getExportDirFlag());
-
 // 持久化到 localStorage 的运行时状态
 const LAST_SYNC_TIME_KEY = 'auto-sync-last-time';
 const EXPORT_DIR_FLAG_KEY = 'auto-sync-export-dir-ready';
@@ -38,6 +30,14 @@ function setLastSyncTime(timestamp: number | null) {
 function getExportDirFlag(): boolean {
   return localStorage.getItem(EXPORT_DIR_FLAG_KEY) === '1';
 }
+
+const isRunning = ref(false);
+const syncStatus = ref<SyncStatus>('idle');
+const lastError = ref<string | null>(null);
+const newArticleCount = ref(0);
+const exportDirectoryHandle = ref<FileSystemDirectoryHandle | null>(null);
+const lastSyncTime = ref<number | null>(getLastSyncTime());
+const hadExportDir = ref<boolean>(getExportDirFlag());
 
 function setExportDirFlag(flag: boolean) {
   if (flag) {
