@@ -253,6 +253,7 @@ export default () => {
         }
       }
 
+      console.log('[syncCycle] newArticleUrls count=', newArticleUrls.length, 'urls=', newArticleUrls);
       if (newArticleUrls.length > 0) {
         toast.success('自动同步', `检测到 ${newArticleUrls.length} 篇新文章`);
 
@@ -264,6 +265,7 @@ export default () => {
         }
 
         const formats = autoSyncConfig?.exportFormats ?? [];
+        console.log('[syncCycle] export formats=', formats, 'dirHandle=', !!exportDirectoryHandle.value);
         if (formats.length > 0) {
           if (exportDirectoryHandle.value) {
             syncStatus.value = 'exporting';
@@ -300,14 +302,24 @@ export default () => {
   }
 
   async function autoExport(urls: string[], formats: string[]) {
+    console.log(
+      '[autoExport] starting export, urls count=',
+      urls.length,
+      'formats=',
+      formats,
+      'dirHandle=',
+      !!exportDirectoryHandle.value
+    );
     for (const format of formats) {
       try {
         const exporter = new Exporter(urls);
         exporter.setExportDirectoryHandle(exportDirectoryHandle.value);
+        console.log('[autoExport] starting', format, 'export...');
         await exporter.startExport(format as any);
+        console.log('[autoExport]', format, 'export completed');
         toast.success('自动导出', `已自动导出 ${format.toUpperCase()} 格式`);
       } catch (e: any) {
-        console.error(`自动导出 ${format} 失败:`, e);
+        console.error(`[autoExport] ${format} export failed:`, e);
         toast.error('自动导出', `${format.toUpperCase()} 导出失败: ${e.message}`);
       }
     }
